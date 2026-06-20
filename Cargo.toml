@@ -1,0 +1,17 @@
+[package]
+name = "zerg_attack"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.1", features = ["derive"] }
+duration-string = "0.3.0"
+humantime = "2.1.0"
+prettytable-rs = "0.10.0"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = { version = "1.0.114", features = ["preserve_order"] }
+reqwest = { version = "0.12", features = ["json"] }
+# zerg = "0.0.4"
+zerg = { path = "/Users/andre.matteo/Main/repositories/github/personal/zerg" }
+axum = "0.7"
+tokio = { version = "1.52.3", features = ["io-util", "net", "rt-multi-thread","rt", "time", "macros"] }

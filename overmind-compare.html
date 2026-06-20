@@ -1,0 +1,2692 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Overmind — Análise de Enxame</title>
+        <style>
+            :root {
+                --bg: #0a0510;
+                --bg-veined: #120a1f;
+                --panel: #160c24;
+                --panel-2: #1d1030;
+                --edge: #3a1f5c;
+                --edge-soft: #2a1640;
+                --creep: #7b2ff7;
+                --creep-2: #a855f7;
+                --sinew: #ff6b35;
+                --spore: #c6ff4f;
+                --ink: #ece6f5;
+                --ink-dim: #9d8db5;
+                --ink-faint: #6b5a82;
+                --good: #6ee7a8;
+                --warn: #ffd166;
+                --bad: #ff5c7c;
+                --radius: 4px;
+                --mono:
+                    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas,
+                    monospace;
+                --disp: "Oswald", "Bebas Neue", Impact, sans-serif;
+                --body: "Inter", system-ui, -apple-system, sans-serif;
+            }
+            [data-theme="light"] {
+                --bg: #efe9f5;
+                --bg-veined: #e7def0;
+                --panel: #faf7fd;
+                --panel-2: #f1eaf8;
+                --edge: #d8c3ee;
+                --edge-soft: #e4d6f2;
+                --creep: #6d28d9;
+                --creep-2: #7c3aed;
+                --sinew: #d2410a;
+                --spore: #4d7c0f;
+                --ink: #1f1330;
+                --ink-dim: #5b4a72;
+                --ink-faint: #8a78a3;
+                --good: #0f7a4d;
+                --warn: #9a6b00;
+                --bad: #c11d44;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background:
+                    radial-gradient(
+                        120% 80% at 80% -10%,
+                        var(--bg-veined) 0%,
+                        var(--bg) 55%
+                    ),
+                    var(--bg);
+                color: var(--ink);
+                font-family: var(--body);
+                line-height: 1.5;
+                min-height: 100vh;
+                -webkit-font-smoothing: antialiased;
+            }
+
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 0;
+                opacity: 0.5;
+                background-image:
+                    radial-gradient(
+                        circle at 15% 30%,
+                        var(--edge-soft) 0,
+                        transparent 9px
+                    ),
+                    radial-gradient(
+                        circle at 70% 60%,
+                        var(--edge-soft) 0,
+                        transparent 7px
+                    ),
+                    radial-gradient(
+                        circle at 40% 85%,
+                        var(--edge-soft) 0,
+                        transparent 11px
+                    ),
+                    radial-gradient(
+                        circle at 90% 20%,
+                        var(--edge-soft) 0,
+                        transparent 6px
+                    );
+                background-size:
+                    280px 280px,
+                    220px 220px,
+                    340px 340px,
+                    180px 180px;
+                mix-blend-mode: screen;
+            }
+            [data-theme="light"] body::before {
+                mix-blend-mode: multiply;
+                opacity: 0.35;
+            }
+
+            .wrap {
+                position: relative;
+                z-index: 1;
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 28px 22px 80px;
+            }
+
+            /* ============ Header ============ */
+            header.hero {
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                gap: 20px;
+                flex-wrap: wrap;
+                border-bottom: 1px solid var(--edge);
+                padding-bottom: 18px;
+                margin-bottom: 26px;
+            }
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+            }
+            .sigil {
+                width: 46px;
+                height: 46px;
+                flex: none;
+                filter: drop-shadow(
+                    0 0 10px color-mix(in srgb, var(--creep) 55%, transparent)
+                );
+            }
+            .title-block h1 {
+                font-family: var(--disp);
+                font-weight: 600;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                font-size: clamp(28px, 4.5vw, 44px);
+                margin: 0;
+                line-height: 0.98;
+                background: linear-gradient(
+                    92deg,
+                    var(--ink),
+                    var(--creep-2) 70%,
+                    var(--sinew)
+                );
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .title-block .sub {
+                font-family: var(--mono);
+                font-size: 11.5px;
+                letter-spacing: 0.22em;
+                text-transform: uppercase;
+                color: var(--ink-faint);
+                margin-top: 6px;
+            }
+
+            .controls {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            button,
+            label.filebtn {
+                font-family: var(--mono);
+                font-size: 12px;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: var(--ink);
+                background: var(--panel-2);
+                border: 1px solid var(--edge);
+                padding: 10px 14px;
+                border-radius: var(--radius);
+                cursor: pointer;
+                transition: all 0.15s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+            button:hover,
+            label.filebtn:hover {
+                border-color: var(--creep);
+                box-shadow:
+                    0 0 0 1px var(--creep),
+                    0 0 18px -6px var(--creep);
+            }
+            button:focus-visible,
+            label.filebtn:focus-visible {
+                outline: 2px solid var(--sinew);
+                outline-offset: 2px;
+            }
+            .filebtn input {
+                display: none;
+            }
+            .theme-toggle {
+                min-width: 44px;
+                justify-content: center;
+            }
+
+            /* ============ Drop zone / empty ============ */
+            .dropzone {
+                border: 1.5px dashed var(--edge);
+                border-radius: 8px;
+                padding: 48px 24px;
+                text-align: center;
+                background: color-mix(in srgb, var(--panel) 60%, transparent);
+                transition: all 0.18s ease;
+            }
+            .dropzone.hot {
+                border-color: var(--creep);
+                background: color-mix(in srgb, var(--creep) 12%, var(--panel));
+            }
+            .dropzone h2 {
+                font-family: var(--disp);
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                font-weight: 500;
+                margin: 0 0 8px;
+                font-size: 22px;
+                color: var(--ink);
+            }
+            .dropzone p {
+                color: var(--ink-dim);
+                margin: 4px 0;
+                font-size: 14px;
+            }
+            .dropzone .hint {
+                font-family: var(--mono);
+                font-size: 11.5px;
+                color: var(--ink-faint);
+                margin-top: 14px;
+                letter-spacing: 0.04em;
+            }
+
+            /* ============ Run chips ============ */
+            .runs-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin: 18px 0 4px;
+            }
+            .run-chip {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: var(--panel);
+                border: 1px solid var(--edge);
+                border-left-width: 3px;
+                padding: 8px 10px 8px 12px;
+                border-radius: var(--radius);
+                font-size: 13px;
+            }
+            .run-chip .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                flex: none;
+                box-shadow: 0 0 8px currentColor;
+            }
+            .run-chip .nm {
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+            .run-chip .baseline {
+                font-family: var(--mono);
+                font-size: 9.5px;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: var(--bg);
+                background: var(--creep-2);
+                padding: 2px 6px;
+                border-radius: 3px;
+            }
+            .run-chip button.x {
+                all: unset;
+                cursor: pointer;
+                color: var(--ink-faint);
+                font-size: 15px;
+                line-height: 1;
+                padding: 2px 4px;
+            }
+            .run-chip button.x:hover {
+                color: var(--bad);
+            }
+            .run-chip .setbase {
+                all: unset;
+                cursor: pointer;
+                font-family: var(--mono);
+                font-size: 9.5px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--ink-faint);
+                border: 1px solid var(--edge);
+                padding: 2px 6px;
+                border-radius: 3px;
+            }
+            .run-chip .setbase:hover {
+                color: var(--creep-2);
+                border-color: var(--creep);
+            }
+
+            /* ============ Section ============ */
+            section {
+                margin-top: 34px;
+            }
+            .sec-head {
+                display: flex;
+                align-items: baseline;
+                gap: 12px;
+                margin-bottom: 14px;
+            }
+            .sec-head h2 {
+                font-family: var(--disp);
+                font-weight: 500;
+                letter-spacing: 0.07em;
+                text-transform: uppercase;
+                font-size: 18px;
+                margin: 0;
+                color: var(--ink);
+            }
+            .sec-head .meta {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+                letter-spacing: 0.08em;
+            }
+            .sec-head::before {
+                content: "";
+            }
+
+            /* ============ KPI strip ============ */
+            .kpis {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 14px;
+            }
+            .kpi {
+                background: linear-gradient(
+                    160deg,
+                    var(--panel-2),
+                    var(--panel)
+                );
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 16px 16px 14px;
+                position: relative;
+                overflow: hidden;
+            }
+            .kpi::after {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: linear-gradient(var(--creep), var(--sinew));
+            }
+            .kpi .k-label {
+                font-family: var(--mono);
+                font-size: 10.5px;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: var(--ink-faint);
+            }
+            .kpi .k-value {
+                font-family: var(--disp);
+                font-size: 30px;
+                letter-spacing: 0.02em;
+                margin-top: 6px;
+                color: var(--ink);
+            }
+            .kpi .k-value .unit {
+                font-size: 14px;
+                color: var(--ink-dim);
+                font-family: var(--mono);
+                margin-left: 4px;
+            }
+            .kpi .k-delta {
+                font-family: var(--mono);
+                font-size: 12px;
+                margin-top: 6px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .delta-good {
+                color: var(--good);
+            }
+            .delta-bad {
+                color: var(--bad);
+            }
+            .delta-flat {
+                color: var(--ink-faint);
+            }
+
+            /* ============ Table ============ */
+            .table-scroll {
+                overflow-x: auto;
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                font-size: 13px;
+                min-width: 720px;
+            }
+            thead th {
+                position: sticky;
+                top: 0;
+                background: var(--panel-2);
+                text-align: right;
+                padding: 11px 12px;
+                font-family: var(--mono);
+                font-size: 10.5px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--ink-dim);
+                border-bottom: 1px solid var(--edge);
+                white-space: nowrap;
+            }
+            thead th:first-child,
+            tbody td:first-child {
+                text-align: left;
+            }
+            tbody td {
+                padding: 10px 12px;
+                text-align: right;
+                border-bottom: 1px solid var(--edge-soft);
+                font-variant-numeric: tabular-nums;
+                font-family: var(--mono);
+            }
+            tbody tr:hover td {
+                background: color-mix(in srgb, var(--creep) 8%, transparent);
+            }
+            tbody td.ep {
+                font-family: var(--mono);
+                font-size: 12px;
+                color: var(--ink);
+                max-width: 380px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            tbody td.ep .method {
+                color: var(--creep-2);
+                font-weight: 600;
+            }
+            .cell-delta {
+                font-size: 11px;
+                display: block;
+                margin-top: 2px;
+            }
+            .badge-err {
+                color: var(--bad);
+                font-weight: 600;
+            }
+            .badge-ok {
+                color: var(--ink-faint);
+            }
+            tr.gone td:first-child {
+                color: var(--bad);
+            }
+            tr.added td:first-child {
+                color: var(--spore);
+            }
+
+            .legend {
+                display: flex;
+                gap: 18px;
+                flex-wrap: wrap;
+                margin-top: 10px;
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+            }
+            .legend span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .legend i {
+                width: 9px;
+                height: 9px;
+                border-radius: 2px;
+                display: inline-block;
+            }
+
+            footer {
+                margin-top: 60px;
+                border-top: 1px solid var(--edge);
+                padding-top: 18px;
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+                letter-spacing: 0.06em;
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            /* ============ Load vs response ============ */
+            .conc-editor {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+            .conc-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: var(--panel);
+                border: 1px solid var(--edge);
+                border-left-width: 3px;
+                padding: 7px 10px;
+                border-radius: var(--radius);
+            }
+            .conc-item .cdot {
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                flex: none;
+                box-shadow: 0 0 7px currentColor;
+            }
+            .conc-item label {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-dim);
+            }
+            .conc-item input {
+                width: 74px;
+                background: var(--bg-veined);
+                border: 1px solid var(--edge);
+                color: var(--ink);
+                font-family: var(--mono);
+                font-size: 12px;
+                padding: 5px 7px;
+                border-radius: 3px;
+            }
+            .conc-item input:focus {
+                outline: none;
+                border-color: var(--creep);
+                box-shadow: 0 0 0 1px var(--creep);
+            }
+            .conc-item .src {
+                font-family: var(--mono);
+                font-size: 9px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+            .conc-item .src.auto {
+                color: var(--spore);
+            }
+            .conc-item .src.manual {
+                color: var(--ink-faint);
+            }
+
+            .load-chart {
+                background: color-mix(in srgb, var(--panel) 55%, transparent);
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 8px;
+            }
+            .load-chart svg {
+                width: 100%;
+                height: auto;
+                display: block;
+            }
+            .load-chart .axis {
+                stroke: var(--edge);
+                stroke-width: 1;
+            }
+            .load-chart .grid {
+                stroke: var(--edge-soft);
+                stroke-width: 1;
+                stroke-dasharray: 3 4;
+            }
+            .load-chart .tick {
+                fill: var(--ink-faint);
+                font-family: var(--mono);
+                font-size: 10px;
+            }
+            .load-chart .axis-title {
+                fill: var(--ink-dim);
+                font-family: var(--mono);
+                font-size: 11px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+            .load-chart .pt-label {
+                fill: var(--ink);
+                font-family: var(--mono);
+                font-size: 10px;
+            }
+            .load-chart .trend {
+                fill: none;
+                stroke: var(--edge);
+                stroke-width: 1.5;
+                stroke-dasharray: 5 5;
+                opacity: 0.6;
+            }
+            .load-empty {
+                padding: 30px;
+                text-align: center;
+                color: var(--ink-faint);
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            /* ============ Filter bar ============ */
+            .filter-bar {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                flex-wrap: wrap;
+                background: var(--panel);
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 12px 14px;
+            }
+            .filter-field {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+                min-width: 200px;
+                color: var(--ink-faint);
+                background: var(--bg-veined);
+                border: 1px solid var(--edge);
+                border-radius: var(--radius);
+                padding: 8px 11px;
+            }
+            .filter-field input {
+                flex: 1;
+                background: none;
+                border: none;
+                outline: none;
+                color: var(--ink);
+                font-family: var(--mono);
+                font-size: 13px;
+            }
+            .filter-field input::placeholder {
+                color: var(--ink-faint);
+            }
+            .filter-field:focus-within {
+                border-color: var(--creep);
+                box-shadow: 0 0 0 1px var(--creep);
+                color: var(--creep-2);
+            }
+            .filter-count {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+                letter-spacing: 0.04em;
+            }
+
+            /* ============ Strain legend (per chart) ============ */
+            .strain-legend {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+            .strain-legend .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                font-family: var(--mono);
+                font-size: 11.5px;
+                color: var(--ink-dim);
+                background: var(--panel);
+                border: 1px solid var(--edge);
+                border-radius: 20px;
+                padding: 4px 11px 4px 9px;
+            }
+            .strain-legend .chip .sw {
+                width: 11px;
+                height: 11px;
+                border-radius: 50%;
+                flex: none;
+                box-shadow: 0 0 7px currentColor;
+            }
+            .strain-legend .chip.is-base {
+                border-color: var(--creep);
+            }
+            .strain-legend .chip .tag {
+                font-size: 8.5px;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: var(--creep-2);
+            }
+
+            /* ============ Improved mutation table ============ */
+            tbody td.ep {
+                position: relative;
+                padding-left: 26px;
+            }
+            tbody td.ep .crown {
+                position: absolute;
+                left: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--spore);
+                font-size: 12px;
+                filter: drop-shadow(
+                    0 0 4px color-mix(in srgb, var(--spore) 60%, transparent)
+                );
+            }
+            td.metric-cell {
+                position: relative;
+            }
+            td.win {
+                background: color-mix(
+                    in srgb,
+                    var(--spore) 14%,
+                    transparent
+                ) !important;
+            }
+            td.win .val {
+                color: var(--spore);
+                font-weight: 600;
+            }
+            .val {
+                display: block;
+            }
+            .crown {
+                font-style: normal;
+            }
+            .legend-explain {
+                background: var(--panel);
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 11px 14px;
+            }
+            .legend-explain .le-title {
+                font-family: var(--disp);
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                font-size: 11px;
+                color: var(--ink-faint);
+                margin-right: 4px;
+            }
+            .legend .sw,
+            .legend i.sw {
+                width: 11px;
+                height: 11px;
+                border-radius: 3px;
+                display: inline-block;
+            }
+            .legend .crown {
+                color: var(--spore);
+            }
+
+            /* winner summary band atop the table */
+            .winner-band {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            .winner-pill {
+                font-family: var(--mono);
+                font-size: 11px;
+                background: var(--panel-2);
+                border: 1px solid var(--edge);
+                border-radius: 20px;
+                padding: 5px 12px;
+                color: var(--ink-dim);
+            }
+            .winner-pill b {
+                color: var(--ink);
+            }
+
+            .ep-select {
+                font-family: var(--mono);
+                font-size: 12px;
+                color: var(--ink);
+                background: var(--panel-2);
+                border: 1px solid var(--edge);
+                border-radius: var(--radius);
+                padding: 8px 11px;
+                max-width: 60%;
+                cursor: pointer;
+            }
+            .ep-select:focus {
+                outline: none;
+                border-color: var(--creep);
+                box-shadow: 0 0 0 1px var(--creep);
+            }
+
+            /* small-multiples grid for "all endpoints" */
+            .mini-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 14px;
+            }
+            .mini-card {
+                background: color-mix(in srgb, var(--panel) 55%, transparent);
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 8px 10px 4px;
+            }
+            .mini-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 2px;
+            }
+            .mini-label {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-dim);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .mini-label .method {
+                color: var(--creep-2);
+                font-weight: 600;
+            }
+            .mini-win {
+                font-family: var(--mono);
+                font-size: 10px;
+                white-space: nowrap;
+                flex: none;
+            }
+            .mini-card svg {
+                width: 100%;
+                height: auto;
+                display: block;
+            }
+
+            .hidden {
+                display: none !important;
+            }
+
+            /* ============ Verdict + Podium (ranking) ============ */
+            .verdict {
+                background: linear-gradient(
+                    150deg,
+                    color-mix(in srgb, var(--creep) 18%, var(--panel)),
+                    var(--panel)
+                );
+                border: 1px solid var(--edge);
+                border-left: 3px solid var(--spore);
+                border-radius: 6px;
+                padding: 14px 16px;
+                margin-bottom: 16px;
+                font-size: 14.5px;
+                color: var(--ink);
+            }
+            .verdict b {
+                color: var(--spore);
+            }
+            .verdict .lead {
+                font-family: var(--disp);
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                font-size: 13px;
+                color: var(--ink-faint);
+                display: block;
+                margin-bottom: 4px;
+            }
+
+            .podium {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 14px;
+            }
+            .rank-card {
+                background: linear-gradient(
+                    160deg,
+                    var(--panel-2),
+                    var(--panel)
+                );
+                border: 1px solid var(--edge);
+                border-radius: 6px;
+                padding: 16px;
+                position: relative;
+                overflow: hidden;
+            }
+            .rank-card::before {
+                content: attr(data-rank);
+                position: absolute;
+                top: -10px;
+                right: 6px;
+                font-family: var(--disp);
+                font-size: 64px;
+                font-weight: 600;
+                color: var(--edge);
+                opacity: 0.5;
+                line-height: 1;
+            }
+            .rank-card.gold {
+                border-color: color-mix(in srgb, var(--spore) 60%, var(--edge));
+                box-shadow: inset 0 0 30px -18px var(--spore);
+            }
+            .rank-card.silver {
+                border-color: color-mix(
+                    in srgb,
+                    var(--creep-2) 50%,
+                    var(--edge)
+                );
+            }
+            .rank-card .medal {
+                font-family: var(--mono);
+                font-size: 10.5px;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--ink-faint);
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .rank-card .medal .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                box-shadow: 0 0 8px currentColor;
+            }
+            .rank-card .rname {
+                font-family: var(--mono);
+                font-size: 13px;
+                color: var(--ink);
+                margin: 8px 0 10px;
+                word-break: break-word;
+            }
+            .rank-card .score {
+                font-family: var(--disp);
+                font-size: 34px;
+                color: var(--ink);
+                line-height: 1;
+            }
+            .rank-card .score .smax {
+                font-size: 14px;
+                color: var(--ink-faint);
+                font-family: var(--mono);
+            }
+            .rank-card .rstats {
+                margin-top: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                font-family: var(--mono);
+                font-size: 11.5px;
+                color: var(--ink-dim);
+            }
+            .rank-card .rstats span b {
+                color: var(--ink);
+                font-weight: 600;
+            }
+            .rank-note {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+                margin-top: 12px;
+                letter-spacing: 0.03em;
+            }
+
+            /* ============ Chart ============ */
+            .chart-controls {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 14px;
+                margin-bottom: 14px;
+                flex-wrap: wrap;
+            }
+            .seg {
+                display: inline-flex;
+                border: 1px solid var(--edge);
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+            .seg button {
+                all: unset;
+                cursor: pointer;
+                font-family: var(--mono);
+                font-size: 11.5px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                padding: 7px 13px;
+                color: var(--ink-dim);
+                transition: all 0.14s ease;
+            }
+            .seg button:hover {
+                color: var(--ink);
+                background: color-mix(in srgb, var(--creep) 12%, transparent);
+            }
+            .seg button.on {
+                background: var(--creep);
+                color: #fff;
+            }
+            [data-theme="light"] .seg button.on {
+                color: #fff;
+            }
+            .chart-hint {
+                font-family: var(--mono);
+                font-size: 11px;
+                color: var(--ink-faint);
+            }
+            .chart {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+            }
+            .chart-row {
+                display: grid;
+                grid-template-columns: 240px 1fr;
+                gap: 14px;
+                align-items: center;
+            }
+            .chart-row .c-label {
+                font-family: var(--mono);
+                font-size: 11.5px;
+                color: var(--ink-dim);
+                text-align: right;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .chart-row .c-label .method {
+                color: var(--creep-2);
+                font-weight: 600;
+            }
+            .bars {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+            .bar-track {
+                position: relative;
+                height: 18px;
+                background: color-mix(
+                    in srgb,
+                    var(--edge-soft) 50%,
+                    transparent
+                );
+                border-radius: 3px;
+                overflow: hidden;
+            }
+            .bar-fill {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                border-radius: 3px;
+                min-width: 2px;
+                display: flex;
+                align-items: center;
+            }
+            .bar-fill .bv {
+                font-family: var(--mono);
+                font-size: 10px;
+                color: #fff;
+                padding-left: 7px;
+                white-space: nowrap;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            }
+            .bar-fill .bv.outside {
+                color: var(--ink);
+                position: absolute;
+                left: calc(100% + 7px);
+                text-shadow: none;
+            }
+            @media (prefers-reduced-motion: no-preference) {
+                .bar-fill {
+                    animation: grow 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+                    transform-origin: left;
+                }
+                @keyframes grow {
+                    from {
+                        transform: scaleX(0);
+                    }
+                    to {
+                        transform: scaleX(1);
+                    }
+                }
+            }
+            @media (max-width: 680px) {
+                .podium {
+                    grid-template-columns: 1fr;
+                }
+                .chart-row {
+                    grid-template-columns: 1fr;
+                    gap: 5px;
+                }
+                .chart-row .c-label {
+                    text-align: left;
+                }
+            }
+
+            @media (prefers-reduced-motion: no-preference) {
+                .kpi,
+                .run-chip,
+                tbody tr {
+                    animation: emerge 0.4s ease both;
+                }
+                @keyframes emerge {
+                    from {
+                        opacity: 0;
+                        transform: translateY(6px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: none;
+                    }
+                }
+            }
+            @media (max-width: 600px) {
+                .title-block h1 {
+                    font-size: 30px;
+                }
+                .kpi .k-value {
+                    font-size: 24px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header class="hero">
+                <div class="brand">
+                    <svg class="sigil" viewBox="0 0 100 100" aria-hidden="true">
+                        <defs>
+                            <radialGradient id="g" cx="50%" cy="40%" r="60%">
+                                <stop offset="0%" stop-color="var(--sinew)" />
+                                <stop offset="60%" stop-color="var(--creep)" />
+                                <stop
+                                    offset="100%"
+                                    stop-color="var(--creep-2)"
+                                />
+                            </radialGradient>
+                        </defs>
+
+                        <path
+                            d="M50 6 C58 26 74 30 82 24 C72 40 78 56 92 60 C70 60 60 74 62 92 C54 74 40 72 30 84 C36 64 26 50 10 50 C28 46 34 30 26 14 C40 26 44 24 50 6 Z"
+                            fill="url(#g)"
+                            opacity="0.92"
+                        />
+                        <circle
+                            cx="50"
+                            cy="50"
+                            r="9"
+                            fill="var(--bg)"
+                            stroke="var(--spore)"
+                            stroke-width="2"
+                        />
+                    </svg>
+                    <div class="title-block">
+                        <h1>Overmind</h1>
+                        <div class="sub">Análise de Enxame · zerg_rush</div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <label class="filebtn" tabindex="0">
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Assimilar .json
+                        <input
+                            id="file"
+                            type="file"
+                            accept=".json,application/json"
+                            multiple
+                        />
+                    </label>
+                    <button id="clear" class="hidden" title="Limpar tudo">
+                        Reabsorver
+                    </button>
+                    <button
+                        class="theme-toggle"
+                        id="theme"
+                        title="Alternar tema"
+                        aria-label="Alternar tema claro/escuro"
+                    >
+                        ◐
+                    </button>
+                </div>
+            </header>
+
+            <div id="empty" class="dropzone" tabindex="0">
+                <h2>Alimente o Overmind</h2>
+                <p>
+                    Arraste um ou mais relatórios <code>run-*.json</code> aqui,
+                    ou use <b>Assimilar .json</b>.
+                </p>
+                <p>
+                    Cada execução vira uma cepa do enxame. Compare duas ou mais
+                    para ver a evolução de desempenho.
+                </p>
+                <div class="hint">
+                    Os arquivos são lidos localmente no seu navegador — nada é
+                    enviado a lugar nenhum.
+                </div>
+            </div>
+
+            <div id="report" class="hidden">
+                <div class="runs-bar" id="runsBar"></div>
+
+                <section id="kpiSection">
+                    <div class="sec-head">
+                        <h2>Vitais da Colônia</h2>
+                        <span class="meta" id="kpiMeta"></span>
+                    </div>
+                    <div class="kpis" id="kpis"></div>
+                </section>
+
+                <section id="rankSection">
+                    <div class="sec-head">
+                        <h2>Hierarquia do Enxame</h2>
+                        <span class="meta"
+                            >ranking por desempenho · vazão, p99 e erros
+                            combinados</span
+                        >
+                    </div>
+                    <div id="verdict" class="verdict"></div>
+                    <div class="podium" id="podium"></div>
+                    <p class="rank-note" id="rankNote"></p>
+                </section>
+
+                <section id="filterSection">
+                    <div class="filter-bar">
+                        <div class="filter-field">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="11" cy="11" r="7" />
+                                <path d="M21 21l-4-4" />
+                            </svg>
+                            <input
+                                id="epSearch"
+                                type="text"
+                                placeholder="Filtrar endpoints… (ex: /merchant-panel, POST)"
+                            />
+                        </div>
+                        <label class="seg" id="epScopeSeg">
+                            <button data-scope="all" class="on">Todos</button>
+                            <button data-scope="errors">Só com erro</button>
+                            <button data-scope="slow">Mais lentos</button>
+                        </label>
+                        <span class="filter-count" id="filterCount"></span>
+                    </div>
+                </section>
+
+                <section id="chartSection">
+                    <div class="sec-head">
+                        <h2>Latência p99 por Endpoint</h2>
+                        <span class="meta" id="chartMeta"
+                            >menor barra = mais rápido</span
+                        >
+                    </div>
+                    <div class="chart-controls">
+                        <label class="seg" id="metricSeg">
+                            <button data-metric="p99" class="on">p99</button>
+                            <button data-metric="p50">p50</button>
+                            <button data-metric="reqs_per_second">vazão</button>
+                        </label>
+                        <span class="chart-hint" id="chartHint"></span>
+                    </div>
+                    <div class="strain-legend" id="chartLegend"></div>
+                    <div class="chart" id="chart"></div>
+                </section>
+
+                <section id="loadSection">
+                    <div class="sec-head">
+                        <h2>Carga vs. Resposta</h2>
+                        <span class="meta" id="loadMeta"
+                            >concorrência × tempo de resposta por cepa</span
+                        >
+                    </div>
+                    <div id="concEditor" class="conc-editor"></div>
+                    <div class="chart-controls">
+                        <label class="seg" id="loadSeg">
+                            <button data-metric="p50">p50</button>
+                            <button data-metric="p95">p95</button>
+                            <button data-metric="p99" class="on">p99</button>
+                        </label>
+                        <span class="chart-hint"
+                            >eixo X = concorrência · eixo Y = tempo · canto
+                            inferior-direito é o ideal</span
+                        >
+                    </div>
+                    <div class="strain-legend" id="loadLegend"></div>
+                    <div id="loadChart" class="load-chart"></div>
+                    <div class="sec-head" style="margin-top: 26px">
+                        <h2 style="font-size: 15px">
+                            Top 3 · Resistência de Carga
+                        </h2>
+                        <span class="meta" id="effMeta"
+                            >mais concorrência com menor latência</span
+                        >
+                    </div>
+                    <div class="podium" id="loadPodium"></div>
+                    <p class="rank-note" id="effNote"></p>
+                </section>
+
+                <section id="timelineSection">
+                    <div class="sec-head">
+                        <h2>Linha do Tempo · Requisições</h2>
+                        <span class="meta" id="tlMeta"
+                            >acúmulo de sucessos e falhas ao longo do
+                            teste</span
+                        >
+                    </div>
+                    <div class="chart-controls">
+                        <label class="seg" id="tlSeg">
+                            <button data-view="both" class="on">Ambos</button>
+                            <button data-view="success">Sucesso</button>
+                            <button data-view="fail">Falha</button>
+                        </label>
+                        <span class="chart-hint"
+                            >— linha cheia = sucesso · linha tracejada =
+                            falha</span
+                        >
+                    </div>
+                    <div class="strain-legend" id="tlLegend"></div>
+                    <div id="tlChart" class="load-chart"></div>
+                    <p class="rank-note" id="tlNote"></p>
+                </section>
+
+                <section id="epTlSection">
+                    <div class="sec-head">
+                        <h2>Linha do Tempo por Endpoint</h2>
+                        <span class="meta" id="epTlMeta"
+                            >tempo de resposta e quantidade por endpoint e
+                            cepa</span
+                        >
+                    </div>
+                    <div class="chart-controls">
+                        <select id="tlEpSelect" class="ep-select"></select>
+                        <label class="seg" id="epTlSeg">
+                            <button data-metric="count" class="on">
+                                Quantidade
+                            </button>
+                            <button data-metric="latency">
+                                Tempo de resposta
+                            </button>
+                        </label>
+                        <span class="chart-hint" id="epTlHint"></span>
+                    </div>
+                    <div class="strain-legend" id="epTlLegend"></div>
+                    <div id="epTlChart" class="load-chart"></div>
+                    <p class="rank-note" id="epTlNote"></p>
+                </section>
+
+                <section id="epSection">
+                    <div class="sec-head">
+                        <h2>Mutação por Endpoint</h2>
+                        <span class="meta" id="epMeta"
+                            >vencedor por endpoint · menor p99 sem erros</span
+                        >
+                    </div>
+                    <div class="strain-legend" id="tableLegend"></div>
+                    <div class="winner-band" id="winnerBand"></div>
+                    <div class="table-scroll">
+                        <table id="epTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="legend legend-explain">
+                        <span class="le-title">Como ler:</span>
+                        <span
+                            ><i class="sw" style="background: var(--good)"></i>
+                            mais rápido / mais vazão que a base</span
+                        >
+                        <span
+                            ><i class="sw" style="background: var(--bad)"></i>
+                            mais lento / menos vazão que a base</span
+                        >
+                        <span
+                            ><i class="sw" style="background: var(--spore)"></i>
+                            endpoint novo nesta cepa</span
+                        >
+                        <span
+                            ><span class="crown">♛</span> cepa vencedora deste
+                            endpoint</span
+                        >
+                        <span
+                            ><i
+                                class="sw"
+                                style="background: var(--bad); opacity: 0.5"
+                            ></i>
+                            100% em erro — ignore a latência</span
+                        >
+                    </div>
+                </section>
+            </div>
+
+            <footer>
+                <span>OVERMIND · leitor local de telemetria</span>
+                <span id="foot-count"></span>
+            </footer>
+        </div>
+
+        <script>
+            "use strict";
+
+            /* ---------- state ---------- */
+            const runs = [];
+            let baselineId = null;
+            const PALETTE = [
+                "#a855f7",
+                "#ff6b35",
+                "#c6ff4f",
+                "#4fd1ff",
+                "#ff5c7c",
+                "#ffd166",
+                "#6ee7a8",
+                "#e879f9",
+            ];
+            let colorIdx = 0;
+
+            /* filter state shared across chart + table */
+            let epFilter = "";
+            let epScope = "all";
+            const SLOW_TOP = 6;
+
+            /* All endpoint labels across runs, ordered by base throughput desc. */
+            function allLabels() {
+                const base = runs.find((r) => r.id === baselineId) || runs[0];
+                const set = new Set();
+                runs.forEach((r) =>
+                    Object.keys(r.data.endpoints).forEach((l) => set.add(l)),
+                );
+                return [...set].sort((a, b) => {
+                    const ra = base?.data.endpoints[a]?.reqs_per_second ?? -1;
+                    const rb = base?.data.endpoints[b]?.reqs_per_second ?? -1;
+                    return rb - ra;
+                });
+            }
+
+            /* Labels after applying the search box + scope menu. */
+            function filteredLabels() {
+                let labels = allLabels();
+                const q = epFilter.trim().toLowerCase();
+                if (q)
+                    labels = labels.filter((l) => l.toLowerCase().includes(q));
+
+                if (epScope === "errors") {
+                    labels = labels.filter((l) =>
+                        runs.some((r) => {
+                            const ep = r.data.endpoints[l];
+                            return ep && (ep.requests.errors || 0) > 0;
+                        }),
+                    );
+                } else if (epScope === "slow") {
+                    const worst = (l) =>
+                        Math.max(
+                            ...runs.map(
+                                (r) =>
+                                    r.data.endpoints[l]?.latency_ms?.p99 ?? 0,
+                            ),
+                        );
+                    labels = [...labels]
+                        .sort((a, b) => worst(b) - worst(a))
+                        .slice(0, SLOW_TOP);
+                }
+                return labels;
+            }
+
+            /* Strain legend markup for any chart. Marks the baseline. */
+            function strainLegend() {
+                return runs
+                    .map((r) => {
+                        const isBase = r.id === baselineId;
+                        return `<span class="chip ${isBase ? "is-base" : ""}">
+      <span class="sw" style="color:${r.color};background:${r.color}"></span>${escapeHtml(r.name)}
+      ${isBase ? '<span class="tag">base</span>' : ""}</span>`;
+                    })
+                    .join("");
+            }
+
+            function winnerFor(label) {
+                const contenders = runs
+                    .map((r) => ({ r, ep: r.data.endpoints[label] }))
+                    .filter((x) => x.ep);
+                if (contenders.length === 0) return null;
+                contenders.sort((a, b) => {
+                    const ea = a.ep.requests.errors || 0,
+                        eb = b.ep.requests.errors || 0;
+                    if (ea !== eb) return ea - eb;
+                    return (
+                        (a.ep.latency_ms.p99 ?? Infinity) -
+                        (b.ep.latency_ms.p99 ?? Infinity)
+                    );
+                });
+
+                return contenders[0].r.id;
+            }
+
+            /* ---------- helpers ---------- */
+            const $ = (s) => document.querySelector(s);
+            const fmt = (n, d = 0) =>
+                n == null || isNaN(n)
+                    ? "—"
+                    : Number(n).toLocaleString("pt-BR", {
+                          minimumFractionDigits: d,
+                          maximumFractionDigits: d,
+                      });
+            const ms = (n) =>
+                n == null
+                    ? "—"
+                    : n >= 1000
+                      ? fmt(n / 1000, 2) + " s"
+                      : fmt(n, 1) + " ms";
+
+            function shortName(filename) {
+                const base = filename.replace(/\.json$/i, "");
+                const m = base.match(/run-(\d{6,})-(.+)/);
+                if (m) {
+                    const date = new Date(parseInt(m[1], 10) * 1000);
+                    const stamp = isNaN(date)
+                        ? m[1]
+                        : date.toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                          });
+                    return `${m[2]} · ${stamp}`;
+                }
+                return base;
+            }
+
+            /* ---------- ingest ---------- */
+            function addFiles(fileList) {
+                const files = [...fileList];
+                let pending = files.length;
+                if (!pending) return;
+                files.forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        try {
+                            const data = JSON.parse(reader.result);
+                            if (!data || !data.total || !data.endpoints)
+                                throw new Error("estrutura inesperada");
+                            const id =
+                                "r" +
+                                Date.now() +
+                                Math.random().toString(36).slice(2, 6);
+                            const conc =
+                                data.run_params &&
+                                data.run_params.concurrency != null
+                                    ? data.run_params.concurrency
+                                    : null;
+                            runs.push({
+                                id,
+                                name: shortName(file.name),
+                                file: file.name,
+                                color: PALETTE[colorIdx++ % PALETTE.length],
+                                data,
+                                concurrency: conc,
+                                concAuto: conc != null,
+                            });
+                            if (baselineId === null) baselineId = id;
+                        } catch (e) {
+                            alert(
+                                `Não consegui assimilar "${file.name}": ${e.message}`,
+                            );
+                        }
+                        if (--pending === 0) render();
+                    };
+                    reader.onerror = () => {
+                        if (--pending === 0) render();
+                    };
+                    reader.readAsText(file);
+                });
+            }
+
+            function removeRun(id) {
+                const i = runs.findIndex((r) => r.id === id);
+                if (i >= 0) runs.splice(i, 1);
+                if (baselineId === id)
+                    baselineId = runs.length ? runs[0].id : null;
+                render();
+            }
+            function clearAll() {
+                runs.length = 0;
+                baselineId = null;
+                colorIdx = 0;
+                render();
+            }
+
+            function deltaCell(cur, base, lowerIsBetter) {
+                if (base == null || cur == null || (base === 0 && cur === 0))
+                    return { txt: "", cls: "delta-flat" };
+                if (base === 0) {
+                    return { txt: "novo", cls: "delta-flat" };
+                }
+                const pct = ((cur - base) / Math.abs(base)) * 100;
+                const improved = lowerIsBetter ? pct < 0 : pct > 0;
+                const flat = Math.abs(pct) < 0.5;
+                const arrow = pct > 0 ? "▲" : pct < 0 ? "▼" : "■";
+                const cls = flat
+                    ? "delta-flat"
+                    : improved
+                      ? "delta-good"
+                      : "delta-bad";
+                return { txt: `${arrow} ${fmt(Math.abs(pct), 1)}%`, cls };
+            }
+
+            const WEIGHTS = { tput: 40, p99: 35, err: 25 };
+
+            function runMetrics(r) {
+                const T = r.data.total;
+                const total = T.requests.total || 0;
+                return {
+                    tput: T.reqs_per_second || 0,
+                    p99: T.latency_ms.p99 || 0,
+                    errRate: total ? (T.requests.errors / total) * 100 : 0,
+                };
+            }
+
+            function computeScores() {
+                if (!runs.length) return [];
+                const m = runs.map((r) => ({ r, ...runMetrics(r) }));
+
+                const range = (vals) => {
+                    const lo = Math.min(...vals),
+                        hi = Math.max(...vals);
+                    return { lo, hi, span: hi - lo || 1 };
+                };
+                const tputR = range(m.map((x) => x.tput));
+                const p99R = range(m.map((x) => x.p99));
+                const errR = range(m.map((x) => x.errRate));
+
+                m.forEach((x) => {
+                    const nTput =
+                        runs.length === 1
+                            ? 1
+                            : (x.tput - tputR.lo) / tputR.span;
+                    const nP99 =
+                        runs.length === 1
+                            ? 1
+                            : 1 - (x.p99 - p99R.lo) / p99R.span;
+                    const nErr =
+                        runs.length === 1
+                            ? 1
+                            : 1 - (x.errRate - errR.lo) / errR.span;
+                    x.score =
+                        nTput * WEIGHTS.tput +
+                        nP99 * WEIGHTS.p99 +
+                        nErr * WEIGHTS.err;
+                    x.parts = { nTput, nP99, nErr };
+                });
+
+                m.sort((a, b) => b.score - a.score);
+                return m;
+            }
+
+            function renderRanking() {
+                const scored = computeScores();
+                const verdict = $("#verdict");
+                const podium = $("#podium");
+                const note = $("#rankNote");
+
+                if (scored.length === 1) {
+                    const s = scored[0];
+                    verdict.innerHTML = `<span class="lead">Cepa única</span>
+      <b>${escapeHtml(s.r.name)}</b> é a única amostra carregada. Adicione outra execução para o Overmind rankear a evolução do enxame.`;
+                    podium.innerHTML = "";
+                    note.textContent = "";
+                    return;
+                }
+
+                const best = scored[0],
+                    worst = scored[scored.length - 1];
+                const bm = runMetrics(best.r),
+                    wm = runMetrics(worst.r);
+                const tputGain = wm.tput
+                    ? ((bm.tput - wm.tput) / wm.tput) * 100
+                    : 0;
+                const p99Gain = wm.p99 ? ((wm.p99 - bm.p99) / wm.p99) * 100 : 0;
+
+                verdict.innerHTML = `<span class="lead">Veredito do Overmind</span>
+    A cepa dominante é <b>${escapeHtml(best.r.name)}</b>, com score de desempenho <b>${fmt(best.score, 1)}/100</b>.
+    Frente à pior cepa (${escapeHtml(worst.r.name)}), entrega ${tputGain >= 0 ? "+" : ""}${fmt(tputGain, 1)}% de vazão
+    e p99 ${p99Gain >= 0 ? fmt(p99Gain, 1) + "% menor" : fmt(-p99Gain, 1) + "% maior"}.`;
+
+                const top = scored.slice(0, 3);
+                const classes = ["gold", "silver", "bronze"];
+                const labels = [
+                    "1º · Dominante",
+                    "2º · Evoluída",
+                    "3º · Viável",
+                ];
+                podium.innerHTML = "";
+                top.forEach((x, i) => {
+                    const mm = runMetrics(x.r);
+                    const card = document.createElement("div");
+                    card.className = `rank-card ${classes[i]}`;
+                    card.setAttribute("data-rank", i + 1);
+                    card.innerHTML = `
+      <div class="medal"><span class="dot" style="color:${x.r.color}"></span>${labels[i]}</div>
+      <div class="rname">${escapeHtml(x.r.name)}</div>
+      <div class="score">${fmt(x.score, 1)}<span class="smax">/100</span></div>
+      <div class="rstats">
+        <span>vazão <b>${fmt(mm.tput, 2)}</b> req/s</span>
+        <span>p99 <b>${ms(mm.p99)}</b></span>
+        <span>erro <b>${fmt(mm.errRate, 1)}%</b></span>
+      </div>`;
+                    podium.appendChild(card);
+                });
+
+                note.textContent = `Score = ${WEIGHTS.tput}% vazão + ${WEIGHTS.p99}% p99 (invertido) + ${WEIGHTS.err}% taxa de erro (invertida), normalizado entre as ${scored.length} cepas carregadas.`;
+            }
+
+            /* ---------- chart ---------- */
+            let chartMetric = "p99";
+
+            function renderChart() {
+                const chart = $("#chart");
+                const legend = $("#chartLegend");
+                const lowerBetter = chartMetric !== "reqs_per_second";
+
+                $("#chartHint").textContent = lowerBetter
+                    ? "barra menor = melhor · ♛ vencedor"
+                    : "barra maior = melhor · ♛ vencedor";
+                $("#chartMeta").textContent = lowerBetter
+                    ? "menor barra = mais rápido"
+                    : "maior barra = mais vazão";
+                legend.innerHTML = strainLegend();
+
+                const ordered = filteredLabels();
+
+                const valueOf = (ep) => {
+                    if (!ep) return null;
+                    if (chartMetric === "reqs_per_second")
+                        return ep.reqs_per_second;
+                    return ep.latency_ms[chartMetric];
+                };
+
+                const bestRunId = (l) => {
+                    let bid = null,
+                        bv = null;
+                    runs.forEach((r) => {
+                        const v = valueOf(r.data.endpoints[l]);
+                        if (v == null) return;
+                        if (bv == null || (lowerBetter ? v < bv : v > bv)) {
+                            bv = v;
+                            bid = r.id;
+                        }
+                    });
+                    return bid;
+                };
+
+                let maxVal = 0;
+                ordered.forEach((l) =>
+                    runs.forEach((r) => {
+                        const v = valueOf(r.data.endpoints[l]);
+                        if (v != null && v > maxVal) maxVal = v;
+                    }),
+                );
+                maxVal = maxVal || 1;
+
+                chart.innerHTML = "";
+                if (ordered.length === 0) {
+                    chart.innerHTML = `<div class="load-empty">Nenhum endpoint corresponde ao filtro.</div>`;
+                    return;
+                }
+                ordered.forEach((l) => {
+                    const win = bestRunId(l);
+                    const row = document.createElement("div");
+                    row.className = "chart-row";
+                    const bars = runs
+                        .map((r) => {
+                            const v = valueOf(r.data.endpoints[l]);
+                            if (v == null)
+                                return `<div class="bar-track" title="ausente em ${escapeHtml(r.name)}"></div>`;
+                            const pct = Math.max(1.5, (v / maxVal) * 100);
+                            const disp =
+                                chartMetric === "reqs_per_second"
+                                    ? fmt(v, 2)
+                                    : ms(v);
+                            const outside = pct < 18;
+                            const isWin = r.id === win;
+                            return `<div class="bar-track" title="${escapeHtml(r.name)}: ${disp}${isWin ? " · vencedor" : ""}">
+        <div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg, ${r.color}, color-mix(in srgb,${r.color} 55%, var(--sinew)))">
+          <span class="bv ${outside ? "outside" : ""}">${isWin ? "♛ " : ""}${disp}</span>
+        </div></div>`;
+                        })
+                        .join("");
+                    row.innerHTML = `<div class="c-label" title="${escapeHtml(l)}">${labelHtml(l)}</div><div class="bars">${bars}</div>`;
+                    chart.appendChild(row);
+                });
+            }
+
+            /* ---------- load vs response ---------- */
+            let loadMetric = "p99";
+
+            function latencyOf(r, metric) {
+                return r.data.total.latency_ms[metric];
+            }
+
+            function renderConcEditor() {
+                const host = $("#concEditor");
+                host.innerHTML = runs
+                    .map(
+                        (r) => `
+    <div class="conc-item" style="border-left-color:${r.color}">
+      <span class="cdot" style="color:${r.color}"></span>
+      <label>${escapeHtml(r.name.split(" · ")[0])}</label>
+      <input type="number" min="1" step="1" value="${r.concurrency ?? ""}" data-id="${r.id}" placeholder="conc.">
+      <span class="src ${r.concAuto ? "auto" : "manual"}">${r.concAuto ? "auto" : "manual"}</span>
+    </div>`,
+                    )
+                    .join("");
+                host.querySelectorAll("input").forEach((inp) => {
+                    inp.addEventListener("input", () => {
+                        const r = runs.find((x) => x.id === inp.dataset.id);
+                        if (!r) return;
+                        const v = parseInt(inp.value, 10);
+                        r.concurrency = isNaN(v) ? null : v;
+                        r.concAuto = false;
+                        inp.parentElement.querySelector(".src").className =
+                            "src manual";
+                        inp.parentElement.querySelector(".src").textContent =
+                            "manual";
+                        renderLoadChart();
+                        renderEfficiency();
+                    });
+                });
+            }
+
+            function renderLoad() {
+                $("#loadMeta").textContent =
+                    `concorrência × tempo (${loadMetric}) por cepa`;
+                $("#loadLegend").innerHTML = strainLegend();
+                renderConcEditor();
+                renderLoadChart();
+                renderEfficiency();
+            }
+
+            function withConc() {
+                return runs.filter(
+                    (r) => r.concurrency != null && r.concurrency > 0,
+                );
+            }
+
+            function renderLoadChart() {
+                const host = $("#loadChart");
+                const pts = withConc()
+                    .map((r) => ({
+                        r,
+                        x: r.concurrency,
+                        y: latencyOf(r, loadMetric),
+                    }))
+                    .filter((p) => p.y != null);
+                if (pts.length === 0) {
+                    host.innerHTML = `<div class="load-empty">Defina a concorrência de pelo menos uma cepa acima para traçar a curva de carga.<br>Execuções geradas pela Hatchery atualizada já trazem esse dado automaticamente.</div>`;
+                    return;
+                }
+
+                const W = 760,
+                    H = 360,
+                    m = { l: 66, r: 26, t: 18, b: 50 };
+                const plotW = W - m.l - m.r,
+                    plotH = H - m.t - m.b;
+                const xmax = Math.max(...pts.map((p) => p.x)) * 1.12 || 1;
+                const ymax = Math.max(...pts.map((p) => p.y)) * 1.12 || 1;
+                const X = (v) => m.l + (v / xmax) * plotW;
+                const Y = (v) => m.t + plotH - (v / ymax) * plotH;
+
+                const xticks = niceTicks(xmax, 5);
+                const yticks = niceTicks(ymax, 5);
+
+                let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Concorrência versus tempo de resposta">`;
+
+                yticks.forEach((t) => {
+                    svg += `<line class="grid" x1="${m.l}" y1="${Y(t).toFixed(1)}" x2="${m.l + plotW}" y2="${Y(t).toFixed(1)}"/>`;
+                    svg += `<text class="tick" x="${m.l - 8}" y="${(Y(t) + 3).toFixed(1)}" text-anchor="end">${t >= 1000 ? (t / 1000).toFixed(1) + "s" : Math.round(t) + "ms"}</text>`;
+                });
+
+                xticks.forEach((t) => {
+                    svg += `<text class="tick" x="${X(t).toFixed(1)}" y="${m.t + plotH + 18}" text-anchor="middle">${Math.round(t)}</text>`;
+                });
+
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t + plotH}"/>`;
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t + plotH}" x2="${m.l + plotW}" y2="${m.t + plotH}"/>`;
+
+                svg += `<text class="axis-title" x="${m.l + plotW / 2}" y="${H - 8}" text-anchor="middle">Concorrência (conexões)</text>`;
+                svg += `<text class="axis-title" transform="translate(16 ${m.t + plotH / 2}) rotate(-90)" text-anchor="middle">Tempo ${loadMetric}</text>`;
+
+                const sorted = [...pts].sort((a, b) => a.x - b.x);
+                if (sorted.length > 1) {
+                    const d = sorted
+                        .map(
+                            (p, i) =>
+                                `${i ? "L" : "M"}${X(p.x).toFixed(1)} ${Y(p.y).toFixed(1)}`,
+                        )
+                        .join(" ");
+                    svg += `<path class="trend" d="${d}"/>`;
+                }
+
+                pts.forEach((p) => {
+                    svg += `<circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="6" fill="${p.r.color}" stroke="var(--bg)" stroke-width="1.5">
+      <title>${escapeHtml(p.r.name)} — conc ${p.x}, ${loadMetric} ${ms(p.y)}</title></circle>`;
+                    svg += `<text class="pt-label" x="${(X(p.x) + 10).toFixed(1)}" y="${(Y(p.y) - 8).toFixed(1)}">${escapeHtml(p.r.name.split(" · ")[0])}</text>`;
+                });
+                svg += `</svg>`;
+                host.innerHTML = svg;
+            }
+
+            /* "nice" axis ticks: returns array of rounded tick values up to max */
+            function niceTicks(max, count) {
+                if (max <= 0) return [0];
+                const raw = max / count;
+                const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+                const norm = raw / mag;
+                const step =
+                    (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+                const ticks = [];
+                for (let v = 0; v <= max; v += step)
+                    ticks.push(Math.round(v * 1000) / 1000);
+                return ticks;
+            }
+
+            /* Efficiency = concurrency sustained per second of latency (selected metric).
+   Higher = handles more load while keeping response time low. */
+            function renderEfficiency() {
+                const host = $("#loadPodium");
+                const note = $("#effNote");
+                $("#effMeta").textContent =
+                    `índice = concorrência ÷ tempo ${loadMetric}`;
+
+                const scored = withConc()
+                    .map((r) => {
+                        const lat = latencyOf(r, loadMetric);
+                        const eff =
+                            lat && lat > 0 ? r.concurrency / (lat / 1000) : 0;
+                        return { r, conc: r.concurrency, lat, eff };
+                    })
+                    .filter((x) => x.lat != null)
+                    .sort((a, b) => b.eff - a.eff);
+
+                if (scored.length === 0) {
+                    host.innerHTML = "";
+                    note.textContent =
+                        "Defina a concorrência das cepas para rankear a resistência de carga.";
+                    return;
+                }
+
+                const top = scored.slice(0, 3);
+                const classes = ["gold", "silver", "bronze"];
+                const labels = [
+                    "1º · Mais resistente",
+                    "2º · Sólida",
+                    "3º · Estável",
+                ];
+                host.innerHTML = top
+                    .map(
+                        (x, i) => `
+    <div class="rank-card ${classes[i]}" data-rank="${i + 1}">
+      <div class="medal"><span class="dot" style="color:${x.r.color}"></span>${labels[i]}</div>
+      <div class="rname">${escapeHtml(x.r.name)}</div>
+      <div class="score">${fmt(x.eff, 0)}<span class="smax">índice</span></div>
+      <div class="rstats">
+        <span>concorrência <b>${fmt(x.conc)}</b></span>
+        <span>tempo ${loadMetric} <b>${ms(x.lat)}</b></span>
+        <span>aguenta <b>${fmt(x.conc)}</b> conexões a ${ms(x.lat)}</span>
+      </div>
+    </div>`,
+                    )
+                    .join("");
+
+                const best = scored[0];
+                note.textContent = `Índice de resistência = concorrência ÷ tempo ${loadMetric} (em segundos): quanto maior, mais conexões a cepa sustenta por segundo de latência. Líder: ${best.r.name.split(" · ")[0]} com ${fmt(best.eff, 0)}.`;
+            }
+
+            /* ---------- timeline ---------- */
+            let tlView = "both";
+
+            function renderTimeline() {
+                const host = $("#tlChart");
+                const note = $("#tlNote");
+                $("#tlLegend").innerHTML = strainLegend();
+
+                const withTl = runs.filter(
+                    (r) =>
+                        Array.isArray(r.data.timeline) &&
+                        r.data.timeline.length,
+                );
+                if (withTl.length === 0) {
+                    host.innerHTML = `<div class="load-empty">As execuções carregadas não contêm linha do tempo.<br>
+      Relatórios gerados pela Hatchery atualizada incluem o array <code>timeline</code> (amostras por segundo).<br>
+      Para visualizar agora, use os arquivos <code>exemplo-*.json</code>.</div>`;
+                    note.textContent = "";
+                    return;
+                }
+
+                const errOf = (s) => (s.http_error || 0) + (s.tcp_error || 0);
+                const seriesVals = (s) =>
+                    tlView === "success"
+                        ? [s.success]
+                        : tlView === "fail"
+                          ? [errOf(s)]
+                          : [s.success, errOf(s)];
+
+                const tmax =
+                    Math.max(
+                        ...withTl.flatMap((r) =>
+                            r.data.timeline.map((s) => s.t_secs),
+                        ),
+                    ) || 1;
+                const ymax = Math.max(
+                    1,
+                    ...withTl.flatMap((r) =>
+                        r.data.timeline.flatMap(seriesVals),
+                    ),
+                );
+
+                const W = 760,
+                    H = 360,
+                    m = { l: 64, r: 24, t: 18, b: 48 };
+                const plotW = W - m.l - m.r,
+                    plotH = H - m.t - m.b;
+                const X = (v) => m.l + (v / tmax) * plotW;
+                const Y = (v) => m.t + plotH - (v / ymax) * plotH;
+                const xticks = niceTicks(tmax, 6);
+                const yticks = niceTicks(ymax, 5);
+
+                let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo de requisições">`;
+                yticks.forEach((t) => {
+                    svg += `<line class="grid" x1="${m.l}" y1="${Y(t).toFixed(1)}" x2="${m.l + plotW}" y2="${Y(t).toFixed(1)}"/>`;
+                    svg += `<text class="tick" x="${m.l - 8}" y="${(Y(t) + 3).toFixed(1)}" text-anchor="end">${fmt(t)}</text>`;
+                });
+                xticks.forEach((t) => {
+                    svg += `<text class="tick" x="${X(t).toFixed(1)}" y="${m.t + plotH + 18}" text-anchor="middle">${fmt(t)}s</text>`;
+                });
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t + plotH}"/>`;
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t + plotH}" x2="${m.l + plotW}" y2="${m.t + plotH}"/>`;
+                svg += `<text class="axis-title" x="${m.l + plotW / 2}" y="${H - 8}" text-anchor="middle">Tempo (s)</text>`;
+                svg += `<text class="axis-title" transform="translate(15 ${m.t + plotH / 2}) rotate(-90)" text-anchor="middle">Requisições acum.</text>`;
+
+                const line = (samples, accessor) => {
+                    const pts = samples
+                        .map(
+                            (s) =>
+                                `${X(s.t_secs).toFixed(1)},${Y(accessor(s)).toFixed(1)}`,
+                        )
+                        .join(" ");
+                    return pts;
+                };
+
+                withTl.forEach((r) => {
+                    const tl = [...r.data.timeline].sort(
+                        (a, b) => a.t_secs - b.t_secs,
+                    );
+                    if (tlView === "both" || tlView === "success") {
+                        svg += `<polyline fill="none" stroke="${r.color}" stroke-width="2.5" points="${line(tl, (s) => s.success)}">
+        <title>${escapeHtml(r.name)} — sucesso</title></polyline>`;
+                    }
+                    if (tlView === "both" || tlView === "fail") {
+                        svg += `<polyline fill="none" stroke="${r.color}" stroke-width="2" stroke-dasharray="5 4" opacity="0.95" points="${line(tl, errOf)}">
+        <title>${escapeHtml(r.name)} — falha</title></polyline>`;
+                    }
+                });
+                svg += `</svg>`;
+                host.innerHTML = svg;
+
+                const finals = withTl
+                    .map((r) => {
+                        const last = [...r.data.timeline]
+                            .sort((a, b) => a.t_secs - b.t_secs)
+                            .slice(-1)[0];
+                        return {
+                            r,
+                            success: last.success,
+                            errors: errOf(last),
+                        };
+                    })
+                    .sort(
+                        (a, b) => b.success - a.success || a.errors - b.errors,
+                    );
+                const L = finals[0];
+                note.textContent = `Ao fim do teste, a cepa com mais sucessos é ${L.r.name.split(" · ")[0]} (${fmt(L.success)} sucessos, ${fmt(L.errors)} falhas). Linha cheia = sucesso acumulado; tracejada = falha acumulada.`;
+            }
+
+            let epTlMetric = "count";
+            let epTlSelected = null;
+
+            function endpointsWithTimeline() {
+                const set = new Set();
+                runs.forEach((r) => {
+                    if (r.data.endpoint_timeline)
+                        Object.keys(r.data.endpoint_timeline).forEach((l) =>
+                            set.add(l),
+                        );
+                });
+                return allLabels().filter((l) => set.has(l));
+            }
+
+            function renderEndpointTimeline() {
+                const host = $("#epTlChart");
+                const sel = $("#tlEpSelect");
+                const note = $("#epTlNote");
+                $("#epTlLegend").innerHTML = strainLegend();
+
+                const eps = endpointsWithTimeline();
+                if (eps.length === 0) {
+                    sel.innerHTML = "";
+                    host.innerHTML = `<div class="load-empty">As execuções não contêm linha do tempo por endpoint.<br>
+      Use os arquivos <code>exemplo-*.json</code> para visualizar, ou gere relatórios com a Hatchery atualizada
+      (cada endpoint amostrado por segundo: quantidade + tempo de resposta).</div>`;
+                    note.textContent = "";
+                    return;
+                }
+                if (epTlSelected !== "__all__" && !eps.includes(epTlSelected))
+                    epTlSelected = eps[0];
+                const optAll = `<option value="__all__" ${epTlSelected === "__all__" ? "selected" : ""}>▦ Todos os endpoints (${eps.length})</option>`;
+                sel.innerHTML =
+                    optAll +
+                    eps
+                        .map(
+                            (l) =>
+                                `<option value="${escapeHtml(l)}" ${l === epTlSelected ? "selected" : ""}>${escapeHtml(l)}</option>`,
+                        )
+                        .join("");
+
+                const isLatency = epTlMetric === "latency";
+                $("#epTlHint").textContent = isLatency
+                    ? "— média por segundo · menor = melhor"
+                    : "— requisições acumuladas";
+
+                if (epTlSelected === "__all__") {
+                    $("#epTlMeta").textContent = isLatency
+                        ? `tempo de resposta (média/seg) · todos os endpoints`
+                        : `quantidade acumulada · todos os endpoints`;
+                    renderEpTlGrid(eps, isLatency, host, note);
+                    return;
+                }
+
+                $("#epTlMeta").textContent = isLatency
+                    ? `tempo de resposta (média/seg) · ${epTlSelected}`
+                    : `quantidade acumulada · ${epTlSelected}`;
+
+                const series = runs.filter(
+                    (r) =>
+                        r.data.endpoint_timeline &&
+                        r.data.endpoint_timeline[epTlSelected],
+                );
+                if (series.length === 0) {
+                    host.innerHTML = `<div class="load-empty">Nenhuma cepa tem dados para este endpoint.</div>`;
+                    note.textContent = "";
+                    return;
+                }
+
+                host.innerHTML = epTlSvg(
+                    epTlSelected,
+                    isLatency,
+                    760,
+                    360,
+                    false,
+                );
+
+                const winId = winnerFor(epTlSelected);
+                const winRun = runs.find((r) => r.id === winId);
+                if (winRun) {
+                    const ep = winRun.data.endpoints[epTlSelected];
+                    note.textContent = `Melhor cepa neste endpoint: ${winRun.name.split(" · ")[0]} — p99 ${ms(ep.latency_ms.p99)}, ${fmt(ep.requests.errors)} erro(s) de ${fmt(ep.requests.total)}. Critério: menos erros, depois menor p99.`;
+                } else {
+                    note.textContent = "";
+                }
+            }
+
+            function renderEpTlGrid(eps, isLatency, host, note) {
+                const cards = eps
+                    .map((label) => {
+                        const has = runs.some(
+                            (r) =>
+                                r.data.endpoint_timeline &&
+                                r.data.endpoint_timeline[label],
+                        );
+                        const winId = winnerFor(label);
+                        const winRun = runs.find((r) => r.id === winId);
+                        const crown = winRun
+                            ? `<span class="mini-win" style="color:${winRun.color}" title="vencedora: ${escapeHtml(winRun.name)}">♛ ${escapeHtml(winRun.name.split(" · ")[0])}</span>`
+                            : "";
+                        const body = has
+                            ? epTlSvg(label, isLatency, 360, 200, true)
+                            : `<div class="load-empty" style="padding:18px">sem dados</div>`;
+                        return `<div class="mini-card">
+      <div class="mini-head"><span class="mini-label" title="${escapeHtml(label)}">${labelHtml(label)}</span>${crown}</div>
+      ${body}
+    </div>`;
+                    })
+                    .join("");
+                host.innerHTML = `<div class="mini-grid">${cards}</div>`;
+                note.textContent = `${eps.length} endpoints · ♛ marca a melhor cepa de cada um (menos erros, depois menor p99). Clique no seletor para abrir um endpoint em detalhe.`;
+            }
+
+            function epTlSvg(label, isLatency, W, H, compact) {
+                const series = runs.filter(
+                    (r) =>
+                        r.data.endpoint_timeline &&
+                        r.data.endpoint_timeline[label],
+                );
+                if (series.length === 0)
+                    return `<div class="load-empty">sem dados</div>`;
+
+                const valOf = (s) => (isLatency ? s.avg_ms : s.count);
+                const tmax =
+                    Math.max(
+                        ...series.flatMap((r) =>
+                            r.data.endpoint_timeline[label].map(
+                                (s) => s.t_secs,
+                            ),
+                        ),
+                    ) || 1;
+                const ymax = Math.max(
+                    1,
+                    ...series.flatMap((r) =>
+                        r.data.endpoint_timeline[label].map(valOf),
+                    ),
+                );
+
+                const m = compact
+                    ? { l: 44, r: 10, t: 10, b: 26 }
+                    : { l: 66, r: 24, t: 18, b: 48 };
+                const plotW = W - m.l - m.r,
+                    plotH = H - m.t - m.b;
+                const X = (v) => m.l + (v / tmax) * plotW;
+                const Y = (v) => m.t + plotH - (v / ymax) * plotH;
+                const yticks = niceTicks(ymax, compact ? 3 : 5);
+                const xticks = niceTicks(tmax, compact ? 4 : 6);
+
+                let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo de ${escapeHtml(label)}">`;
+                yticks.forEach((t) => {
+                    svg += `<line class="grid" x1="${m.l}" y1="${Y(t).toFixed(1)}" x2="${m.l + plotW}" y2="${Y(t).toFixed(1)}"/>`;
+                    const lab = isLatency
+                        ? t >= 1000
+                            ? (t / 1000).toFixed(1) + "s"
+                            : Math.round(t) + "ms"
+                        : fmt(t);
+                    svg += `<text class="tick" x="${m.l - 6}" y="${(Y(t) + 3).toFixed(1)}" text-anchor="end" ${compact ? 'style="font-size:9px"' : ""}>${lab}</text>`;
+                });
+                xticks.forEach((t) => {
+                    svg += `<text class="tick" x="${X(t).toFixed(1)}" y="${m.t + plotH + (compact ? 14 : 18)}" text-anchor="middle" ${compact ? 'style="font-size:9px"' : ""}>${fmt(t)}s</text>`;
+                });
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t + plotH}"/>`;
+                svg += `<line class="axis" x1="${m.l}" y1="${m.t + plotH}" x2="${m.l + plotW}" y2="${m.t + plotH}"/>`;
+                if (!compact) {
+                    svg += `<text class="axis-title" x="${m.l + plotW / 2}" y="${H - 8}" text-anchor="middle">Tempo (s)</text>`;
+                    svg += `<text class="axis-title" transform="translate(15 ${m.t + plotH / 2}) rotate(-90)" text-anchor="middle">${isLatency ? "Tempo de resposta" : "Requisições"}</text>`;
+                }
+
+                series.forEach((r) => {
+                    const tl = [...r.data.endpoint_timeline[label]].sort(
+                        (a, b) => a.t_secs - b.t_secs,
+                    );
+                    const pts = tl
+                        .map(
+                            (s) =>
+                                `${X(s.t_secs).toFixed(1)},${Y(valOf(s)).toFixed(1)}`,
+                        )
+                        .join(" ");
+                    svg += `<polyline fill="none" stroke="${r.color}" stroke-width="${compact ? 1.8 : 2.5}" points="${pts}"><title>${escapeHtml(r.name)}</title></polyline>`;
+                    if (!compact) {
+                        tl.forEach((s) => {
+                            svg += `<circle cx="${X(s.t_secs).toFixed(1)}" cy="${Y(valOf(s)).toFixed(1)}" r="3" fill="${r.color}"><title>${escapeHtml(r.name)} — ${fmt(s.t_secs)}s: ${isLatency ? ms(s.avg_ms) : fmt(s.count) + " reqs"}</title></circle>`;
+                        });
+                    }
+                });
+                svg += `</svg>`;
+                return svg;
+            }
+
+            function render() {
+                $("#foot-count").textContent = runs.length
+                    ? `${runs.length} cepa(s) · ${runs.reduce((a, r) => a + Object.keys(r.data.endpoints).length, 0)} amostras`
+                    : "";
+                const hasRuns = runs.length > 0;
+                $("#empty").classList.toggle("hidden", hasRuns);
+                $("#report").classList.toggle("hidden", !hasRuns);
+                $("#clear").classList.toggle("hidden", !hasRuns);
+                if (!hasRuns) return;
+
+                renderChips();
+                renderKpis();
+                renderRanking();
+                renderChart();
+                renderLoad();
+                renderTimeline();
+                renderEndpointTimeline();
+                renderTable();
+            }
+
+            function renderChips() {
+                const bar = $("#runsBar");
+                bar.innerHTML = "";
+                runs.forEach((r) => {
+                    const chip = document.createElement("div");
+                    chip.className = "run-chip";
+                    chip.style.borderLeftColor = r.color;
+                    const isBase = r.id === baselineId;
+                    chip.innerHTML = `
+      <span class="dot" style="color:${r.color}"></span>
+      <span class="nm">${r.name}</span>
+      ${isBase ? `<span class="baseline">base</span>` : `<button class="setbase" data-id="${r.id}">def. base</button>`}
+      <button class="x" data-id="${r.id}" title="remover">✕</button>`;
+                    bar.appendChild(chip);
+                });
+                bar.querySelectorAll(".x").forEach(
+                    (b) => (b.onclick = () => removeRun(b.dataset.id)),
+                );
+                bar.querySelectorAll(".setbase").forEach(
+                    (b) =>
+                        (b.onclick = () => {
+                            baselineId = b.dataset.id;
+                            render();
+                        }),
+                );
+            }
+
+            function renderKpis() {
+                const base = runs.find((r) => r.id === baselineId);
+                const latest = runs[runs.length - 1];
+                const compare =
+                    latest && latest.id !== baselineId ? latest : null;
+                $("#kpiMeta").textContent = compare
+                    ? `${compare.name} vs. base ${base.name}`
+                    : `cepa base · ${base.name}`;
+
+                const T = base.data.total;
+                const errRate = T.requests.total
+                    ? (T.requests.errors / T.requests.total) * 100
+                    : 0;
+
+                const defs = [
+                    {
+                        label: "Requisições",
+                        val: fmt(T.requests.total),
+                        unit: "",
+                        key: (d) => d.total.requests.total,
+                        lower: false,
+                    },
+                    {
+                        label: "Vazão",
+                        val: fmt(T.reqs_per_second, 2),
+                        unit: "req/s",
+                        key: (d) => d.total.reqs_per_second,
+                        lower: false,
+                    },
+                    {
+                        label: "Taxa de erro",
+                        val: fmt(errRate, 1),
+                        unit: "%",
+                        key: (d) =>
+                            d.total.requests.total
+                                ? (d.total.requests.errors /
+                                      d.total.requests.total) *
+                                  100
+                                : 0,
+                        lower: true,
+                    },
+                    {
+                        label: "Latência p50",
+                        val: ms(T.latency_ms.p50),
+                        unit: "",
+                        key: (d) => d.total.latency_ms.p50,
+                        lower: true,
+                        isMs: true,
+                    },
+                    {
+                        label: "Latência p99",
+                        val: ms(T.latency_ms.p99),
+                        unit: "",
+                        key: (d) => d.total.latency_ms.p99,
+                        lower: true,
+                        isMs: true,
+                    },
+                    {
+                        label: "Latência máx.",
+                        val: ms(T.latency_ms.max),
+                        unit: "",
+                        key: (d) => d.total.latency_ms.max,
+                        lower: true,
+                        isMs: true,
+                    },
+                ];
+
+                const host = $("#kpis");
+                host.innerHTML = "";
+                defs.forEach((def) => {
+                    let deltaHtml = "";
+                    if (compare) {
+                        const cur = def.key(compare.data),
+                            bas = def.key(base.data);
+                        const d = deltaCell(cur, bas, def.lower);
+                        const curTxt = def.isMs
+                            ? ms(cur)
+                            : fmt(
+                                  cur,
+                                  def.unit === "%" || def.unit === "req/s"
+                                      ? def.unit === "%"
+                                          ? 1
+                                          : 2
+                                      : 0,
+                              );
+                        deltaHtml = `<div class="k-delta ${d.cls}">${d.txt} <span style="color:var(--ink-faint)">→ ${curTxt}${def.unit ? " " + def.unit : ""}</span></div>`;
+                    }
+                    const card = document.createElement("div");
+                    card.className = "kpi";
+                    card.innerHTML = `<div class="k-label">${def.label}</div>
+      <div class="k-value">${def.val}${def.unit ? `<span class="unit">${def.unit}</span>` : ""}</div>
+      ${deltaHtml}`;
+                    host.appendChild(card);
+                });
+            }
+
+            function renderTable() {
+                const base = runs.find((r) => r.id === baselineId);
+                const thead = $("#epTable thead");
+                const tbody = $("#epTable tbody");
+                $("#tableLegend").innerHTML = strainLegend();
+
+                const ordered = filteredLabels();
+                $("#filterCount").textContent =
+                    `${ordered.length} de ${allLabels().length} endpoints`;
+                $("#epMeta").textContent =
+                    `vencedor por endpoint · ♛ = menos erros, depois menor p99`;
+
+                const others = runs.filter((r) => r.id !== baselineId);
+
+                const winCount = {};
+                ordered.forEach((l) => {
+                    const w = winnerFor(l);
+                    if (w) winCount[w] = (winCount[w] || 0) + 1;
+                });
+                const band = $("#winnerBand");
+                if (band) {
+                    const pills = runs
+                        .map((r) => ({ r, n: winCount[r.id] || 0 }))
+                        .sort((a, b) => b.n - a.n)
+                        .map(
+                            (
+                                x,
+                            ) => `<span class="winner-pill" style="border-left:3px solid ${x.r.color}">
+        <b>${escapeHtml(x.r.name.split(" · ")[0])}</b> vence ${x.n} endpoint${x.n === 1 ? "" : "s"}</span>`,
+                        )
+                        .join("");
+                    band.innerHTML = pills;
+                }
+
+                // header
+                let head = `<tr><th>Endpoint</th><th>Melhor</th><th>Reqs<br>base</th><th>p99<br>base</th><th>Erros<br>base</th>`;
+                others.forEach((r) => {
+                    head += `<th style="color:${r.color}">Reqs<br>${escapeHtml(r.name.split(" · ")[0])}</th>
+             <th style="color:${r.color}">p99</th>
+             <th style="color:${r.color}">Erros</th>`;
+                });
+                head += `</tr>`;
+                thead.innerHTML = head;
+
+                tbody.innerHTML = "";
+                if (ordered.length === 0) {
+                    tbody.innerHTML = `<tr><td class="ep" colspan="${5 + others.length * 3}">Nenhum endpoint corresponde ao filtro.</td></tr>`;
+                    return;
+                }
+
+                ordered.forEach((label) => {
+                    const be = base.data.endpoints[label];
+                    const winId = winnerFor(label);
+                    const winRun = runs.find((r) => r.id === winId);
+                    const tr = document.createElement("tr");
+                    if (!be) {
+                        tr.classList.add("added");
+                    }
+
+                    const crown = `<span class="crown" title="cepa vencedora">♛</span>`;
+                    let row = `<td class="ep" title="${escapeHtml(label)}">${winId ? crown : ""}${labelHtml(label)}</td>`;
+
+                    row += `<td class="metric-cell">${
+                        winRun
+                            ? `<span class="val" style="color:${winRun.color}">${escapeHtml(winRun.name.split(" · ")[0])}</span>`
+                            : "—"
+                    }</td>`;
+
+                    const baseWins = winId === base.id;
+                    row += `<td>${be ? fmt(be.requests.total) : "—"}</td>`;
+                    row += `<td class="metric-cell ${baseWins ? "win" : ""}"><span class="val">${be ? ms(be.latency_ms.p99) : "—"}</span></td>`;
+                    row += `<td>${be ? errCell(be) : "—"}</td>`;
+
+                    others.forEach((r) => {
+                        const ce = r.data.endpoints[label];
+                        if (!ce) {
+                            row += `<td class="badge-err">ausente</td><td>—</td><td>—</td>`;
+                            return;
+                        }
+                        const dReq = be
+                            ? deltaCell(
+                                  ce.requests.total,
+                                  be.requests.total,
+                                  false,
+                              )
+                            : { txt: "novo", cls: "delta-flat" };
+                        const dP99 = be
+                            ? deltaCell(
+                                  ce.latency_ms.p99,
+                                  be.latency_ms.p99,
+                                  true,
+                              )
+                            : { txt: "", cls: "delta-flat" };
+                        const cWins = winId === r.id;
+                        row += `<td>${fmt(ce.requests.total)}<span class="cell-delta ${dReq.cls}">${dReq.txt}</span></td>`;
+                        row += `<td class="metric-cell ${cWins ? "win" : ""}"><span class="val">${ms(ce.latency_ms.p99)}</span><span class="cell-delta ${dP99.cls}">${dP99.txt}</span></td>`;
+                        row += `<td>${errCell(ce)}</td>`;
+                    });
+
+                    tr.innerHTML = row;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function errCell(ep) {
+                const e = ep.requests.errors || 0;
+                if (!e) return `<span class="badge-ok">0</span>`;
+
+                const codes =
+                    ep.errors && ep.errors.http
+                        ? Object.entries(ep.errors.http)
+                              .map(([c, n]) => `${c}×${n}`)
+                              .join(" ")
+                        : "";
+                return `<span class="badge-err">${fmt(e)}</span>${codes ? `<span class="cell-delta badge-err">${codes}</span>` : ""}`;
+            }
+
+            function labelHtml(label) {
+                const sp = label.indexOf(" ");
+                if (sp < 0) return escapeHtml(label);
+                const method = label.slice(0, sp),
+                    path = label.slice(sp + 1);
+                return `<span class="method">${escapeHtml(method)}</span> ${escapeHtml(path)}`;
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(
+                    /[&<>"']/g,
+                    (c) =>
+                        ({
+                            "&": "&amp;",
+                            "<": "&lt;",
+                            ">": "&gt;",
+                            '"': "&quot;",
+                            "'": "&#39;",
+                        })[c],
+                );
+            }
+
+            $("#file").addEventListener("change", (e) => {
+                addFiles(e.target.files);
+                e.target.value = "";
+            });
+            $("#clear").addEventListener("click", clearAll);
+
+            $("#epSearch").addEventListener("input", (e) => {
+                epFilter = e.target.value;
+                if (runs.length) {
+                    renderChart();
+                    renderTable();
+                }
+            });
+
+            $("#epScopeSeg").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-scope]");
+                if (!btn) return;
+                epScope = btn.dataset.scope;
+                $("#epScopeSeg")
+                    .querySelectorAll("button")
+                    .forEach((b) => b.classList.toggle("on", b === btn));
+                if (runs.length) {
+                    renderChart();
+                    renderTable();
+                }
+            });
+
+            $("#tlEpSelect").addEventListener("change", (e) => {
+                epTlSelected = e.target.value;
+                if (runs.length) renderEndpointTimeline();
+            });
+            $("#epTlSeg").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-metric]");
+                if (!btn) return;
+                epTlMetric = btn.dataset.metric;
+                $("#epTlSeg")
+                    .querySelectorAll("button")
+                    .forEach((b) => b.classList.toggle("on", b === btn));
+                if (runs.length) renderEndpointTimeline();
+            });
+
+            $("#tlSeg").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-view]");
+                if (!btn) return;
+                tlView = btn.dataset.view;
+                $("#tlSeg")
+                    .querySelectorAll("button")
+                    .forEach((b) => b.classList.toggle("on", b === btn));
+                if (runs.length) renderTimeline();
+            });
+
+            $("#metricSeg").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-metric]");
+                if (!btn) return;
+                chartMetric = btn.dataset.metric;
+                $("#metricSeg")
+                    .querySelectorAll("button")
+                    .forEach((b) => b.classList.toggle("on", b === btn));
+                if (runs.length) renderChart();
+            });
+
+            $("#loadSeg").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-metric]");
+                if (!btn) return;
+                loadMetric = btn.dataset.metric;
+                $("#loadSeg")
+                    .querySelectorAll("button")
+                    .forEach((b) => b.classList.toggle("on", b === btn));
+                if (runs.length) {
+                    $("#loadMeta").textContent =
+                        `concorrência × tempo (${loadMetric}) por cepa`;
+                    renderLoadChart();
+                    renderEfficiency();
+                }
+            });
+
+            const dz = $("#empty");
+            ["dragenter", "dragover"].forEach((ev) => {
+                document.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    dz.classList.add("hot");
+                });
+            });
+            ["dragleave", "drop"].forEach((ev) => {
+                document.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    if (ev === "drop" || e.target === dz)
+                        dz.classList.remove("hot");
+                });
+            });
+            document.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dz.classList.remove("hot");
+                if (e.dataTransfer?.files?.length)
+                    addFiles(e.dataTransfer.files);
+            });
+
+            const themeBtn = $("#theme");
+            function setTheme(t) {
+                document.documentElement.setAttribute("data-theme", t);
+                themeBtn.textContent = t === "dark" ? "◐" : "◑";
+            }
+            themeBtn.addEventListener("click", () => {
+                const cur = document.documentElement.getAttribute("data-theme");
+                setTheme(cur === "dark" ? "light" : "dark");
+            });
+
+            render();
+        </script>
+    </body>
+</html>

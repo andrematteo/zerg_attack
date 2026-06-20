@@ -258,3 +258,50 @@ cargo test
 ```
 
 Covers the pure logic (offline, no HTTP target): `BenchmarkResult` aggregation, counts and percentiles, the live `Progress`/`ProgressMap` counters, HAR parsing/retargeting and forbidden headers, error classification, `swarm` validation, and URI `with_path`.
+
+
+---
+
+## Quick wins
+
+### hatchery
+```bash
+cargo run -- hatchery --bind 0.0.0.0:7700
+
+OR
+
+zerg_attack hatchery --bind 0.0.0.0:7700
+```
+
+
+### Drones
+```bash
+cargo run -- drone -H http://127.0.0.1:7700 --name drone-01
+
+OR
+
+zerg_attack drone -H http://127.0.0.1:7700 --name drone-01
+```
+
+
+### Overlord
+```bash
+cargo run -- overlord -H http://127.0.0.1:7700
+
+OR
+
+zerg_attack overlord -H http://127.0.0.1:7700
+```
+
+### Start
+```bash
+cargo run -- start -H http://127.0.0.1:7700 \
+--url URL_TARGET -d 10s -c 3 -t 1 --har path_sanitized.har \
+--token "ACCESS TOKEN"
+
+OR
+
+zerg_attack start -H http://127.0.0.1:7700 \
+--url URL_TARGET -d 10s -c 3 -t 1 --har path_sanitized.har \
+--token "ACCESS TOKEN"
+```

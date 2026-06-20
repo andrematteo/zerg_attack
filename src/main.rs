@@ -244,3 +244,275 @@ fn run_start(args: StartArgs) -> Result<(), Box<dyn std::error::Error + Send + S
     }
     Ok(())
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory; // for Cli::command()
+    use clap::Parser; // for Cli::try_parse_from()
+
+    // ---- bearer_from -------------------------------------------------------
+
+    #[test]
+    fn bearer_from_none_stays_none() {
+        assert_eq!(bearer_from(None), None);
+    }
+
+    #[test]
+    fn bearer_from_adds_prefix_to_bare_token() {
+        assert_eq!(
+            bearer_from(Some("abc123".to_string())),
+            Some("Bearer abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn bearer_from_does_not_double_prefix() {
+        assert_eq!(
+            bearer_from(Some("Bearer abc123".to_string())),
+            Some("Bearer abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn bearer_from_prefix_match_is_case_insensitive() {
+        // Detection is case-insensitive, but the original casing is preserved
+        // (the function returns the trimmed input unchanged when it already
+        // looks like a Bearer value).
+        assert_eq!(
+            bearer_from(Some("bearer abc".to_string())),
+            Some("bearer abc".to_string())
+        );
+        assert_eq!(
+            bearer_from(Some("BEARER abc".to_string())),
+            Some("BEARER abc".to_string())
+        );
+    }
+
+    #[test]
+    fn bearer_from_trims_surrounding_whitespace() {
+        assert_eq!(
+            bearer_from(Some("   abc   ".to_string())),
+            Some("Bearer abc".to_string())
+        );
+        // Already-prefixed and padded: trimmed, then recognized as Bearer.
+        assert_eq!(
+            bearer_from(Some("  Bearer xyz  ".to_string())),
+            Some("Bearer xyz".to_string())
+        );
+    }
+
+    // ---- edge cases that document current behavior (worth reviewing) -------
+
+    #[test]
+    fn bearer_from_word_bearer_without_space_is_treated_as_a_token() {
+        // "bearer" with no trailing space does NOT match the "bearer " prefix,
+        // so it is treated as a raw token and prefixed. Documents the quirk.
+        assert_eq!(
+            bearer_from(Some("bearer".to_string())),
+            Some("Bearer bearer".to_string())
+        );
+    }
+
+    #[test]
+    fn bearer_from_empty_string_yields_bearer_space() {
+        // An empty/whitespace-only token currently produces "Bearer " (a
+        // dangling prefix). Flagged — you may prefer to return None here.
+        assert_eq!(
+            bearer_from(Some("   ".to_string())),
+            Some("Bearer ".to_string())
+        );
+    }
+
+    // ---- clap: the command definition itself is valid ----------------------
+
+    #[test]
+    fn cli_definition_is_valid() {
+        // Catches structural mistakes at test time: duplicate short flags,
+        // bad arg config, etc.
+        Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn version_flag_is_wired() {
+        let err = Cli::try_parse_from(["zerg_attack", "--version"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
+    }
+
+    // ---- clap: `local` defaults & overrides --------------------------------
+
+    #[test]
+    fn local_uses_documented_defaults() {
+        let cli = Cli::try_parse_from(["zerg_attack", "local"]).unwrap();
+        match cli.command {
+            Command::Local(a) => {
+                assert_eq!(a.url, "http://127.0.0.1:8090");
+                assert_eq!(a.duration, Duration::from_secs(10));
+                assert_eq!(a.concurrency, 400);
+                assert_eq!(a.threads, 4);
+                assert_eq!(a.timeout, Duration::from_secs(15));
+                assert!(!a.json);
+                assert!(a.har.is_none());
+                assert!(a.token.is_none());
+            }
+            other => panic!("expected Local, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn local_overrides_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "zerg_attack",
+            "local",
+            "--url",
+            "https://api.example.com",
+            "-c",
+            "800",
+            "-t",
+            "8",
+            "--duration",
+            "1m30s",
+            "--timeout",
+            "5s",
+            "--json",
+            "--token",
+            "abc",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Local(a) => {
+                assert_eq!(a.url, "https://api.example.com");
+                assert_eq!(a.concurrency, 800);
+                assert_eq!(a.threads, 8);
+                assert_eq!(a.duration, Duration::from_secs(90)); // humantime 1m30s
+                assert_eq!(a.timeout, Duration::from_secs(5));
+                assert!(a.json);
+                assert_eq!(a.token.as_deref(), Some("abc"));
+            }
+            other => panic!("expected Local, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn invalid_duration_is_rejected() {
+        let err = Cli::try_parse_from(["zerg_attack", "local", "--duration", "banana"])
+            .unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ValueValidation);
+    }
+
+    // ---- clap: `hatchery` --------------------------------------------------
+
+    #[test]
+    fn hatchery_bind_default() {
+        let cli = Cli::try_parse_from(["zerg_attack", "hatchery"]).unwrap();
+        match cli.command {
+            Command::Hatchery(a) => assert_eq!(a.bind, "0.0.0.0:7700"),
+            other => panic!("expected Hatchery, got {other:?}"),
+        }
+    }
+
+    // ---- clap: `drone` -----------------------------------------------------
+
+    #[test]
+    fn drone_requires_hatchery() {
+        let err = Cli::try_parse_from(["zerg_attack", "drone"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn drone_parses_flags() {
+        let cli = Cli::try_parse_from([
+            "zerg_attack",
+            "drone",
+            "-H",
+            "http://10.0.0.1:7700",
+            "--name",
+            "drone-a",
+            "--max-concurrency",
+            "256",
+            "--once",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Drone(a) => {
+                assert_eq!(a.hatchery, "http://10.0.0.1:7700");
+                assert_eq!(a.name.as_deref(), Some("drone-a"));
+                assert_eq!(a.max_concurrency, Some(256));
+                assert!(a.once);
+            }
+            other => panic!("expected Drone, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn drone_optional_defaults() {
+        let cli = Cli::try_parse_from(["zerg_attack", "drone", "-H", "http://h:7700"]).unwrap();
+        match cli.command {
+            Command::Drone(a) => {
+                assert!(a.name.is_none());
+                assert!(a.max_concurrency.is_none());
+                assert!(!a.once);
+            }
+            other => panic!("expected Drone, got {other:?}"),
+        }
+    }
+
+    // ---- clap: `start` -----------------------------------------------------
+
+    #[test]
+    fn start_requires_hatchery() {
+        let err = Cli::try_parse_from(["zerg_attack", "start"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn start_inherits_load_defaults() {
+        let cli =
+            Cli::try_parse_from(["zerg_attack", "start", "-H", "http://h:7700"]).unwrap();
+        match cli.command {
+            Command::Start(a) => {
+                assert_eq!(a.hatchery, "http://h:7700");
+                assert_eq!(a.url, "http://127.0.0.1:8090");
+                assert_eq!(a.duration, Duration::from_secs(10));
+                assert_eq!(a.concurrency, 400);
+                assert_eq!(a.threads, 4);
+                assert_eq!(a.timeout, Duration::from_secs(15));
+                assert!(a.har.is_none());
+                assert!(a.token.is_none());
+            }
+            other => panic!("expected Start, got {other:?}"),
+        }
+    }
+
+    // ---- clap: `overlord` --------------------------------------------------
+
+    #[test]
+    fn overlord_requires_hatchery() {
+        let err = Cli::try_parse_from(["zerg_attack", "overlord"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn overlord_interval_default_and_override() {
+        let def = Cli::try_parse_from(["zerg_attack", "overlord", "-H", "http://h:7700"]).unwrap();
+        match def.command {
+            Command::Overlord(a) => assert_eq!(a.interval, Duration::from_secs(1)),
+            other => panic!("expected Overlord, got {other:?}"),
+        }
+
+        let ovr = Cli::try_parse_from([
+            "zerg_attack",
+            "overlord",
+            "-H",
+            "http://h:7700",
+            "--interval",
+            "250ms",
+        ])
+        .unwrap();
+        match ovr.command {
+            Command::Overlord(a) => assert_eq!(a.interval, Duration::from_millis(250)),
+            other => panic!("expected Overlord, got {other:?}"),
+        }
+    }
+}

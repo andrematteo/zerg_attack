@@ -3,10 +3,6 @@
 </p>
 
 <p align="center">
-  <img src="assets/zerg-rush-banner.svg" alt="ZERG — distributed HTTP load tester" width="100%">
-</p>
-
-<p align="center">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-1.88%2B-ce4e2c?logo=rust&logoColor=white">
   <img alt="Edition" src="https://img.shields.io/badge/edition-2024-ce4e2c">
   <img alt="HTTP" src="https://img.shields.io/badge/HTTP-1.1%20%2F%202-7c3aed">

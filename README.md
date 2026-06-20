@@ -10,7 +10,7 @@
   <img alt="status" src="https://img.shields.io/badge/mode-local%20%2B%20distributed-ff6b35">
 </p>
 
-# zerg
+# zerg attack | swarm attack | zerg rush
 
 An HTTP load tester that attacks a target with a **swarm** of concurrent requests and reports latency and errors. It runs standalone on one machine or **distributed** across a fleet of workers — and leans, unapologetically, on the Zerg metaphor: you spawn a colony, it attacks, and the coordinator consolidates the damage.
 
